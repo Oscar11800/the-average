@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --vellum-base: #F4E8D0;
+  --vellum-shadow: #E8D9B8;
+  --ink-primary: #3B2A1A;
+  --ink-secondary: #6B4E2E;
+  --ink-faded: #A08865;
+  --accent-red: #8B2E1F;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--vellum-base);
+  color: var(--ink-primary);
+  font-family: 'EB Garamond', 'Cormorant Garamond', Georgia, serif;
+  /* Vellum texture: layered radial gradients + subtle noise via SVG filter */
+  background-image:
+    radial-gradient(ellipse at 50% 0%, rgba(139, 110, 60, 0.10) 0%, transparent 65%),
+    radial-gradient(ellipse at 50% 100%, rgba(80, 50, 20, 0.08) 0%, transparent 60%),
+    radial-gradient(ellipse at 0% 50%, rgba(100, 70, 30, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 100% 50%, rgba(100, 70, 30, 0.06) 0%, transparent 50%);
+  background-attachment: fixed;
+}
+
+/* SVG noise filter for parchment grain */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1000;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-size: 256px 256px;
+  background-repeat: repeat;
+}
