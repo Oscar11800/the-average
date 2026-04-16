@@ -1,93 +1,94 @@
 /**
- * Abstract human glyph — a minimal census-mark figure.
- * Circle head + vertical body + arm strokes + leg strokes.
- * chestScale (0.94–1.06) widens the torso stroke width and arm spread.
+ * Ink-stamp silhouette of a human figure.
+ * Filled, no outline. chestScale widens the torso.
+ * mix-blend-mode: multiply on the parent group creates ink accumulation.
+ *
+ * Coordinate space: normalized to a 10×18 unit grid, scaled by `size`.
  */
-interface SoldierFigureProps {
+
+export const MIN_CHEST = 33
+export const MAX_CHEST = 48
+
+export function chestToScale(chest: number): number {
+  const t = (chest - MIN_CHEST) / (MAX_CHEST - MIN_CHEST) // 0 → 1
+  return 0.88 + t * 0.24 // 0.88 → 1.12  (wider range for silhouette visibility)
+}
+
+interface Props {
   x: number
-  y: number
-  height: number
-  chestScale: number  // 0.94 – 1.06
+  y: number       // center of figure
+  size: number    // height in px
+  chestScale?: number
   opacity?: number
   isIdeal?: boolean
 }
 
-const BASE_CHEST = 40  // reference size for scale=1.0
-const MIN_CHEST = 33
-const MAX_CHEST = 48
+// Body path in a 10×16 unit space (head is separate circle above)
+// Shoulders at y=0, feet at y=16. Chest width parameterized by scale.
+function bodyPath(cs: number): string {
+  // Shoulder width controlled by cs, centered at x=5
+  const sw = 3.5 * cs   // half-shoulder-width
+  const hw = 2.2 * cs   // half-hip-width
+  const ww = 1.8 * cs   // half-waist-width
 
-export function chestToScale(chest: number): number {
-  const t = (chest - MIN_CHEST) / (MAX_CHEST - MIN_CHEST)  // 0 → 1
-  return 0.94 + t * 0.12  // 0.94 → 1.06
+  const lShoulder = 5 - sw
+  const rShoulder = 5 + sw
+  const lWaist = 5 - ww
+  const rWaist = 5 + ww
+  const lHip = 5 - hw
+  const rHip = 5 + hw
+
+  return [
+    `M ${lShoulder} 0`,
+    `C ${lShoulder - 1.5} 0 ${lShoulder - 1.2} 3 ${lShoulder} 4`,
+    `L ${lWaist} 7`,
+    `L ${lHip} 9`,
+    `L ${lHip - 0.3} 16`,
+    `L ${5 - 0.8} 16`,
+    `L ${5 - 0.5} 10`,
+    `L ${5 + 0.5} 10`,
+    `L ${5 + 0.8} 16`,
+    `L ${rHip + 0.3} 16`,
+    `L ${rHip} 9`,
+    `L ${rWaist} 7`,
+    `L ${rShoulder} 4`,
+    `C ${rShoulder + 1.2} 3 ${rShoulder + 1.5} 0 ${rShoulder} 0`,
+    `Z`,
+  ].join(' ')
 }
-void BASE_CHEST
 
 export default function SoldierFigure({
   x,
   y,
-  height,
-  chestScale,
+  size,
+  chestScale = 1,
   opacity = 1,
   isIdeal = false,
-}: SoldierFigureProps) {
-  // Proportions relative to height
-  const headR = height * 0.10
-  const bodyLen = height * 0.38
-  const legLen = height * 0.30
-  const armSpread = height * 0.22 * chestScale
-  const armY = height * 0.20
-  const legSpread = height * 0.12
+}: Props) {
+  const scale = size / 18  // unit-to-pixel scale
+  const headR = 2.2 * scale
+  // Head sits above body: center of figure (y) is the vertical midpoint
+  // Total height = headDiameter (4.4) + gap (1) + body (16) = ~21.4 units → scale to `size`
+  const totalUnits = 21.4
+  const pxPerUnit = size / totalUnits
+  const headCY = y - size / 2 + headR
+  const bodyTopY = headCY + headR + 1 * pxPerUnit
 
-  const headCY = y - height * 0.5 + headR
-  const shoulderY = headCY + headR + height * 0.04
-  const hipY = shoulderY + bodyLen
-  const footY = hipY + legLen
-
-  const strokeColor = isIdeal ? 'var(--ink-faded)' : 'var(--ink-primary)'
-  const strokeW = isIdeal ? 0.8 : 1.2
+  const fill = isIdeal ? 'var(--ink-faded)' : 'var(--ink-primary)'
 
   return (
-    <g opacity={opacity} style={{ transition: 'opacity 0.3s ease-out' }}>
+    <g opacity={opacity}>
       {/* Head */}
       <circle
         cx={x}
         cy={headCY}
         r={headR}
-        fill="none"
-        stroke={strokeColor}
-        strokeWidth={strokeW}
+        fill={fill}
       />
       {/* Body */}
-      <line
-        x1={x} y1={shoulderY}
-        x2={x} y2={hipY}
-        stroke={strokeColor}
-        strokeWidth={strokeW * chestScale * 1.4}
-        strokeLinecap="round"
-      />
-      {/* Arms */}
-      <line
-        x1={x - armSpread} y1={shoulderY + armY * 0.1}
-        x2={x + armSpread} y2={shoulderY + armY * 0.1}
-        stroke={strokeColor}
-        strokeWidth={strokeW}
-        strokeLinecap="round"
-      />
-      {/* Legs */}
-      <line
-        x1={x} y1={hipY}
-        x2={x - legSpread} y2={footY}
-        stroke={strokeColor}
-        strokeWidth={strokeW}
-        strokeLinecap="round"
-      />
-      <line
-        x1={x} y1={hipY}
-        x2={x + legSpread} y2={footY}
-        stroke={strokeColor}
-        strokeWidth={strokeW}
-        strokeLinecap="round"
-      />
+      <g transform={`translate(${x - 5 * scale}, ${bodyTopY}) scale(${scale})`}>
+        <path d={bodyPath(chestScale)} fill={fill} />
+      </g>
     </g>
   )
 }

@@ -8,41 +8,76 @@ interface Props {
   runningStdDev: number
 }
 
+const labelStyle: React.CSSProperties = {
+  fontFamily: "'EB Garamond', serif",
+  fontStyle: 'italic',
+  fontSize: 13,
+  color: 'var(--ink-faded)',
+  display: 'block',
+  marginBottom: 2,
+  letterSpacing: '0.01em',
+}
+
+const symbolStyle: React.CSSProperties = {
+  fontFamily: "'EB Garamond', serif",
+  fontStyle: 'italic',
+  fontSize: 15,
+  color: 'var(--ink-faded)',
+  marginRight: 5,
+}
+
+const valueStyle: React.CSSProperties = {
+  fontFamily: "'JetBrains Mono', monospace",
+  fontSize: 16,
+  color: 'var(--ink-secondary)',
+  letterSpacing: '0.02em',
+}
+
 export default function Counters({ n, total, runningMean, runningStdDev }: Props) {
   const showSigma = n >= PHASE_BOUNDARIES.SHRINKING_END
 
   return (
-    <div
-      className="flex gap-8 justify-center items-baseline"
-      style={{
-        fontFamily: "'JetBrains Mono', monospace",
-        fontSize: 13,
-        color: 'var(--ink-secondary)',
-        letterSpacing: '0.02em',
-      }}
-    >
-      <span>
-        <span style={{ color: 'var(--ink-faded)', fontSize: 11 }}>n </span>
-        {n.toLocaleString()} / {total.toLocaleString()}
-      </span>
-      <span>
-        <span style={{ color: 'var(--ink-faded)', fontSize: 11 }}>μ </span>
-        {n > 0 ? `${runningMean.toFixed(2)}″` : '—'}
-      </span>
+    <div className="flex gap-10 justify-center items-end">
+
+      {/* n — soldiers counted */}
+      <div className="flex flex-col items-center">
+        <span style={labelStyle}>soldiers counted</span>
+        <div style={valueStyle}>
+          <span style={symbolStyle}>n</span>
+          {n.toLocaleString()}
+          <span style={{ color: 'var(--ink-faded)', fontSize: 13 }}> / {total.toLocaleString()}</span>
+        </div>
+      </div>
+
+      {/* μ — mean chest size */}
+      <div className="flex flex-col items-center">
+        <span style={labelStyle}>mean chest size</span>
+        <div style={valueStyle}>
+          <span style={symbolStyle}>μ</span>
+          {n > 0 ? `${runningMean.toFixed(2)}″` : '—'}
+        </div>
+      </div>
+
+      {/* σ — spread around the mean */}
       <AnimatePresence>
         {showSigma && (
-          <motion.span
+          <motion.div
             key="sigma"
-            initial={{ opacity: 0, y: 4 }}
+            className="flex flex-col items-center"
+            initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.6, ease: 'easeOut' }}
+            transition={{ duration: 0.7, ease: 'easeOut' }}
           >
-            <span style={{ color: 'var(--ink-faded)', fontSize: 11 }}>σ </span>
-            {runningStdDev.toFixed(2)}″
-          </motion.span>
+            <span style={labelStyle}>spread (std. deviation)</span>
+            <div style={valueStyle}>
+              <span style={symbolStyle}>σ</span>
+              {runningStdDev.toFixed(2)}″
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
+
     </div>
   )
 }

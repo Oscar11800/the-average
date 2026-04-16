@@ -95,12 +95,12 @@ export default function TheAverage() {
   }, [])
 
   // Canvas dimensions (responsive)
-  const [dims, setDims] = useState({ w: Math.min(900, window.innerWidth - 48), h: 480 })
+  const [dims, setDims] = useState({ w: Math.min(960, window.innerWidth - 32), h: Math.min(580, window.innerHeight * 0.62) })
   useEffect(() => {
     const observer = new ResizeObserver(() => {
       setDims({
-        w: Math.min(900, window.innerWidth - 48),
-        h: Math.min(480, window.innerHeight * 0.55),
+        w: Math.min(960, window.innerWidth - 32),
+        h: Math.min(580, window.innerHeight * 0.62),
       })
     })
     observer.observe(document.body)
