@@ -23,13 +23,18 @@ This piece is the visual performance of a specific argument from Theodore M. Por
 
 The chest circumference data for 5,738 Scottish militiamen was originally published in the *Edinburgh Medical and Surgical Journal*, vol. 13 (1817), p. 260, in an article by a correspondent known only as "A. M." Quetelet reproduced and analyzed it in his 1846 *Lettres à S.A.R. le Duc Régnant de Saxe-Coburg et Gotha*. The table below is the version Quetelet used and is the one Porter refers to on p. 107.
 
-**Fetch this dataset at runtime from the canonical Rdatasets mirror.** This is a well-known historical dataset maintained in R's `HistData` package under the name `Chest`. Fetch it from:
+**Fetch this dataset at runtime from the canonical Rdatasets mirror.** This is a well-known historical dataset maintained in R's `HistData` package. Two versions exist:
+
+- **`ChestSizes`** — Quetelet's original 1846 transcription (with minor transcription errors he introduced)
+- **`ChestStigler`** — Stephen Stigler's 1986 correction of those errors, as documented in *The History of Statistics* (Harvard UP, 1986), p. 208
+
+**Use `ChestSizes`** — Quetelet's own version — since the piece performs *his* thought experiment as *he* framed it. Fetch it from:
 
 ```
-https://raw.githubusercontent.com/vincentarelbundock/Rdatasets/master/csv/HistData/Chest.csv
+https://raw.githubusercontent.com/vincentarelbundock/Rdatasets/master/csv/HistData/ChestSizes.csv
 ```
 
-The CSV has two columns: `chest` (circumference in inches, integers 33–48) and `count` (number of soldiers at that measurement). Parse it at load time and normalize it into the shape:
+The CSV has three columns: `rownames` (ignore), `chest` (circumference in inches, integers 33–48), and `count` (number of soldiers). Parse it at load time, skip the `rownames` column, and normalize it into the shape:
 
 ```typescript
 // lib/data.ts
@@ -140,14 +145,16 @@ Background must have a subtle vellum texture — either a noise layer, a subtle 
 - **Counters / data readouts:** a monospaced serif. Recommended: **JetBrains Mono** or **IBM Plex Mono** at small sizes for `n`, `μ`, `σ`.
 - **Annotations on figures:** handwritten-feeling italic. Recommended: a subtle italic variant of the serif, not a script font (no Lucida Handwriting).
 
-### 4.4 The soldier figure (SVG)
-Create a single master SVG of a Vitruvian-style soldier figure — standing, front-facing, with arms slightly outstretched in a shortened Vitruvian pose. Rendered as fine sepia line-art, no fill. The figure's chest should have an SVG path whose width can be parametrically stretched via a `data-chest-inches` attribute that scales the torso's horizontal dimension by a small factor (e.g., ±6% across the 33"–48" range, so variation is visible but not grotesque).
+### 4.4 The soldier figure
+Each soldier is represented as a **minimal abstract human glyph** — not a traced Vitruvian drawing, but a mark that reads unmistakably as a person: a small circle (head) atop a vertical stroke (body), with two short diagonal strokes for arms and two short diagonal strokes for legs. This is deliberately statistical: it evokes a tally mark or a census notation more than an illustration.
 
-Design guidance:
-- Line weight: ~1px at base scale, scaling with viewport
-- Style: faint circle and square behind figure (Vitruvian geometry), drawn even fainter
-- No face details — leave it as a geometric abstraction
-- Reuse a single `<symbol>` via `<use>` tags for performance
+The glyph is rendered as an inline SVG `<g>` element, entirely in sepia stroke, no fill. The torso stroke's horizontal scale is parametrically adjusted by the soldier's chest size: ±6% across the 33"–48" range (imperceptible at a glance, but collectively visible as the crowd forms — thicker columns on the right side). This is the *only* dimension that varies per soldier.
+
+Implementation:
+- Each glyph is a `<g>` composed of ~5–6 SVG `<line>` or `<path>` elements
+- Parameterize via a `chestScale` prop (a number from ~0.94 to ~1.06)
+- Reuse a single `<symbol>` via `<use>` tags for performance at high n
+- Line weight: ~1.2px at base scale, scaling with viewport
 
 ### 4.5 The normal curve
 - Drawn as a single smooth SVG path using D3's `d3.line()` with `curveBasis` or `curveCatmullRom` interpolation
@@ -172,10 +179,10 @@ Design guidance:
 - **Framework:** Vite 5+ with React 18+ (plain SPA — no SSR, no App Router)
 - **Language:** TypeScript (strict mode)
 - **Rendering:** React 18+ for UI, D3 v7+ for scales and math, SVG for all visual output
-- **Animation:** Framer Motion for UI transitions; `requestAnimationFrame` + D3 for the scrub-driven soldier/histogram rendering
-- **Styling:** Tailwind CSS v3 (via PostCSS) + a small CSS module for custom vellum texture
-- **Fonts:** Google Fonts `<link>` in `index.html` for EB Garamond and JetBrains Mono (no `next/font`)
-- **Deployment:** GitHub Pages via the `gh-pages` npm package; `npm run deploy` runs `vite build && gh-pages -d dist`
+- **Animation:** Framer Motion for highest-quality UI transitions (layout animations, opacity crossfades between phases); `requestAnimationFrame` + D3 for the scrub-driven soldier/histogram rendering
+- **Styling:** Tailwind CSS v3 (PostCSS, `tailwind.config.js`) + a small CSS module for vellum texture
+- **Fonts:** Google Fonts `<link>` in `index.html` for EB Garamond and JetBrains Mono
+- **Deployment:** GitHub Pages via GitHub Actions (`.github/workflows/deploy.yml`); triggers automatically on every push to `master`
 
 ### 5.2 Project structure
 ```
@@ -200,10 +207,37 @@ the-average/
 ├── public/
 │   └── vellum-texture.svg  # Tileable background (optional, can be CSS-only)
 ├── vite.config.ts          # base: '/the-average/' for GitHub Pages sub-path
-└── package.json            # deploy script: "gh-pages -d dist"
+├── .github/
+│   └── workflows/
+│       └── deploy.yml      # Auto-deploy to GitHub Pages on push to master
+└── package.json
 ```
 
-**Critical GitHub Pages config:** set `base: '/the-average/'` in `vite.config.ts` so asset paths resolve correctly when served from `https://<username>.github.io/the-average/`. If deploying to a custom domain or a root `github.io` site, set `base: '/'` instead.
+**Critical GitHub Pages config:** set `base: '/the-average/'` in `vite.config.ts` so asset paths resolve correctly when served from `https://<username>.github.io/the-average/`.
+
+**GitHub Actions deploy workflow** (`.github/workflows/deploy.yml`):
+```yaml
+name: Deploy to GitHub Pages
+on:
+  push:
+    branches: [master]
+permissions:
+  contents: write
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: npm run build
+      - uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+```
 
 ### 5.3 Data flow
 
@@ -301,12 +335,12 @@ export function normalPDF(x: number, mu: number, sigma: number): number {
 ## 6. Build order (for the week)
 
 **Day 1 — Foundation**
-- `npm create vite@latest the-average -- --template react-ts`; install dependencies (d3, framer-motion, seedrandom, tailwind, gh-pages)
-- Configure Tailwind (PostCSS), set `base: '/the-average/'` in `vite.config.ts`, add Google Fonts `<link>` to `index.html`
-- Set up color CSS variables, vellum background in `index.css`
-- Create `src/lib/data.ts` with `fetchSoldierData()`; write a quick smoke-test in the browser console confirming MEAN ≈ 39.83, STD_DEV ≈ 2.05
-- Write `src/lib/stats.ts` and `src/lib/sampling.ts` with seeded shuffle; verify deterministic output
-- Add `"deploy": "vite build && gh-pages -d dist"` to `package.json` scripts; do a test deploy to confirm GitHub Pages serves the placeholder page correctly
+- `npm create vite@latest . -- --template react-ts` (in-place, repo already exists); install dependencies (d3, @types/d3, framer-motion, seedrandom, @types/seedrandom, tailwindcss, postcss, autoprefixer)
+- `npx tailwindcss init -p`; configure Tailwind, set `base: '/the-average/'` in `vite.config.ts`, add Google Fonts `<link>` to `index.html`
+- Set up CSS custom properties (color vars), vellum background texture in `index.css`
+- Create `src/lib/data.ts` with `fetchSoldierData()` hitting `ChestSizes.csv`; smoke-test in browser console confirming MEAN ≈ 39.83, STD_DEV ≈ 2.05, TOTAL = 5738
+- Write `src/lib/stats.ts` and `src/lib/sampling.ts`; verify shuffle is deterministic (same output on two runs with seed `"quetelet-1846"`)
+- Create `.github/workflows/deploy.yml`; push to master and confirm Actions deploys to `gh-pages` branch successfully before proceeding to Day 2
 
 **Day 2 — The soldier figure**
 - Design `SoldierFigure.tsx` as a parameterized SVG
@@ -359,4 +393,4 @@ That question is the whole point. The artifact asks it by not asking it.
 
 ## 8. Appendix: one-shot prompt for Claude
 
-> I'm building a Vite + React + D3 interactive data visualization called "The Average," deployed to GitHub Pages. Read instructions.md in this folder and implement the full project end-to-end. Fetch the 1817 Scottish soldier chest circumference data client-side on mount from the Rdatasets CSV as described in Section 2 — do not hardcode the values. Follow the visual specification in Section 4 (Vitruvian Man on vellum, sepia ink, EB Garamond + JetBrains Mono). Follow the technical specification in Section 5 (Vite + React SPA, TypeScript strict, Framer Motion, seeded deterministic shuffle, `base: '/the-average/'` in vite.config.ts). Build in the order described in Section 6, but commit working code at every step rather than trying to build everything at once. The single source of truth for state is `scrubPosition` (0 to 5,738), and scrubbing must be deterministic, reversible, and 60fps. No explicit philosophical text should be added — the piece is pure visualization over real historical data, per Section 1. When in doubt, favor restraint: this is a Renaissance manuscript, not a dashboard.
+> I'm building a Vite + React + D3 interactive data visualization called "The Average," deployed automatically to GitHub Pages via GitHub Actions. Read instructions.md in this folder and implement the full project end-to-end. Fetch the 1817 Scottish soldier chest circumference data client-side on mount from `https://raw.githubusercontent.com/vincentarelbundock/Rdatasets/master/csv/HistData/ChestSizes.csv` — parse the `chest` and `count` columns (ignore `rownames`) — do not hardcode the values. Follow the visual specification in Section 4 (abstract human glyph marks on vellum, sepia ink, EB Garamond + JetBrains Mono). Follow the technical specification in Section 5 (Vite + React SPA, TypeScript strict, Framer Motion for transitions, seeded deterministic shuffle, `base: '/the-average/'` in vite.config.ts, GitHub Actions deploy workflow). Build in the order described in Section 6, but commit working code at every step rather than trying to build everything at once. The single source of truth for state is `scrubPosition` (0 to 5,738), and scrubbing must be deterministic, reversible, and 60fps. No explicit philosophical text should be added — the piece is pure visualization over real historical data, per Section 1. When in doubt, favor restraint: this is a Renaissance manuscript, not a dashboard.
